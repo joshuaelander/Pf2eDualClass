@@ -361,6 +361,7 @@ Hooks.on("renderCharacterSheetPF2e", (app, html) => {
             <h3>${secondaryName} Summary</h3>
             <p>Key Ability: ${secondaryKeyAbility ? secondaryKeyAbility.toUpperCase() : "Unknown"}</p>
             <p>Saves: ${secondarySaves.length ? secondarySaves.map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(", ") : "None"}</p>
+            <p><button class="refresh-secondary-class btn">Refresh Secondary Class</button></p>
         </div>
     `;
 
@@ -414,6 +415,21 @@ Hooks.on("renderCharacterSheetPF2e", (app, html) => {
             ui.notifications.info(`Added ${droppedItem.name} as a level ${slotLevel} Secondary Class Feat.`);
         } catch (err) {
             console.error(`${MODULE_ID} | Drop error:`, err);
+        }
+    });
+
+    // Refresh / re-run secondary-class derived data
+    html.find('.refresh-secondary-class').on('click', async (ev) => {
+        try {
+            ui.notifications.info(`${MODULE_ID}: Re-applying secondary-class effects...`);
+            // Re-run actor preparation which will fire pf2e.prepareDerivedData
+            // and cause `applySecondaryClassModifiers` to execute.
+            await actor.prepareData();
+            app.render(true);
+            ui.notifications.info(`${MODULE_ID}: Secondary-class refresh complete.`);
+        } catch (err) {
+            console.error(`${MODULE_ID} | Refresh error:`, err);
+            ui.notifications.error(`${MODULE_ID}: Failed to refresh secondary class.`);
         }
     });
 });
