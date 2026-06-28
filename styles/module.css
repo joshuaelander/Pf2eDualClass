@@ -19,6 +19,26 @@
         margin-bottom: 5px;
     }
 
+    .secondary-class-summary {
+        border: 1px dashed var(--color-border-dark-4);
+        padding: 0.75rem;
+        border-radius: 3px;
+        background: rgba(0, 0, 0, 0.04);
+        margin-bottom: 10px;
+    }
+
+    .secondary-class-summary h3 {
+        font-family: var(--serif);
+        font-size: 1.05rem;
+        margin-bottom: 0.35rem;
+    }
+
+    .secondary-class-help {
+        margin-bottom: 0.8rem;
+        color: var(--text-light);
+        font-size: 0.95rem;
+    }
+
     /* Make sure the feat slots look interactive */
     .secondary-class-feats .feat-slot {
         border: 1px dashed var(--color-border-dark-4);
