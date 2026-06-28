@@ -348,6 +348,9 @@ Hooks.on("preCreateItem", (item, data, options, userId) => {
     const className = originalClassData?.name;
     const rules = buildSecondaryClassRuleElements(originalClassData?.system ?? {}, className, existingPrimaryClass?.system ?? {});
 
+    // Build a merged system snapshot for UI and synthetics
+    const mergedSystem = mergeClassData(existingPrimaryClass?.system ?? {}, originalClassData?.system ?? {});
+
     item.updateSource({
         type: "feat",
         "system.category": "class",
@@ -358,7 +361,8 @@ Hooks.on("preCreateItem", (item, data, options, userId) => {
                 isSecondaryClass: true,
                 originalClassData,
                 secondaryClassSlug: originalClassData?.system?.slug,
-                secondaryClassName: className
+                secondaryClassName: className,
+                mergedSystem
             }
         }
     });

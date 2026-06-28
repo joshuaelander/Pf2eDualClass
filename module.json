@@ -12,6 +12,9 @@
       "name": "You"
     }
   ],
+  "url": "https://github.com/joshuaelander/Pf2eDualClass",
+	"manifest": "https://raw.githubusercontent.com/joshuaelander/Pf2eDualClass/main/module.json",
+	"download": "https://github.com/joshuaelander/Pf2eDualClass/archive/refs/heads/main.zip",
   "esmodules": [
     "scripts/main.js"
   ],
