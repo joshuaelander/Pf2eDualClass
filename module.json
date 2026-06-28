@@ -2,7 +2,7 @@
   "id": "pf2e-dual-class",
   "title": "PF2e Dual Class",
   "description": "Implements true dual-classing without combination classes by overlaying a secondary class onto the character sheet.",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "compatibility": {
     "minimum": "14",
     "verified": "14"

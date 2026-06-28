@@ -4,6 +4,18 @@ Hooks.once("init", () => {
     console.log(`${MODULE_ID} | Initializing Proper Dual Class Support`);
 });
 
+// Module settings
+Hooks.once("init", () => {
+    game.settings.register(MODULE_ID, "autoAssignSecondaryFeats", {
+        name: "pf2e-dual-class.settings.autoAssign.name",
+        hint: "pf2e-dual-class.settings.autoAssign.hint",
+        scope: "world",
+        config: true,
+        type: Boolean,
+        default: false
+    });
+});
+
 function isSecondaryClassItem(item) {
     return !!item?.flags?.[MODULE_ID]?.isSecondaryClass;
 }
@@ -112,6 +124,40 @@ function getClassProficiencyEntries(classData) {
     return entries;
 }
 
+function getSelectorRank(classData, selector) {
+    if (!classData) return 0;
+
+    // Check saving throws
+    const savingThrows = classData?.savingThrows ?? classData?.saves ?? {};
+    const saveEntry = savingThrows[selector];
+    if (saveEntry !== undefined) {
+        if (typeof saveEntry === "object") return parseProficiencyRank(saveEntry?.rank ?? saveEntry?.value ?? saveEntry);
+        if (typeof saveEntry === "boolean") return saveEntry ? 1 : 0;
+        return parseProficiencyRank(saveEntry);
+    }
+
+    // Check proficiencies root
+    const profRoot = classData?.proficiencies ?? classData?.proficiency ?? classData?.proficienciesByCategory ?? null;
+    if (profRoot && typeof profRoot === "object") {
+        const val = profRoot[selector];
+        if (val !== undefined) {
+            if (Array.isArray(val)) return Math.max(...val.map((v) => parseProficiencyRank(v?.rank ?? v?.value ?? v)));
+            if (typeof val === "object") return parseProficiencyRank(val?.rank ?? val?.value ?? val);
+            return parseProficiencyRank(val);
+        }
+    }
+
+    // Direct property fallback (weapons/armor/skills/perception)
+    const direct = classData?.[selector];
+    if (direct !== undefined) {
+        if (Array.isArray(direct)) return Math.max(...direct.map((v) => parseProficiencyRank(v?.rank ?? v?.value ?? v)));
+        if (typeof direct === "object") return parseProficiencyRank(direct?.rank ?? direct?.value ?? direct);
+        return parseProficiencyRank(direct);
+    }
+
+    return 0;
+}
+
 function buildSecondaryClassRuleElements(classData, className, primaryClassData = {}) {
     const rules = [];
     const keyAbility = getSecondaryClassKeyAbility(classData);
@@ -127,13 +173,14 @@ function buildSecondaryClassRuleElements(classData, className, primaryClassData 
     }
 
     getSecondaryClassSaves(classData).forEach((saveType) => {
-        const primaryHasSave = hasClassSave(primaryClassData, saveType);
-        if (!primaryHasSave) {
-            const rank = parseProficiencyRank(1);
+        const primaryRank = getSelectorRank(primaryClassData, saveType);
+        const secondaryRank = Math.max(getSelectorRank(classData, saveType), parseProficiencyRank(1));
+        const desiredRank = Math.max(primaryRank, secondaryRank);
+        if (desiredRank > primaryRank) {
             rules.push({
                 key: "GrantProficiency",
                 selector: saveType,
-                rank,
+                rank: desiredRank,
                 label: `${className} secondary class ${saveType} save proficiency`,
                 slug: `${className?.toLowerCase()?.replace(/[^a-z0-9]+/g, "-")}-secondary-${saveType}-save`
             });
@@ -145,14 +192,18 @@ function buildSecondaryClassRuleElements(classData, className, primaryClassData 
     profEntries.forEach((entry) => {
         // Avoid duplicating save proficiencies
         if (["fortitude", "reflex", "will"].includes(entry.selector)) return;
-        const rank = parseProficiencyRank(entry.rank ?? 1);
-        rules.push({
-            key: "GrantProficiency",
-            selector: entry.selector,
-            rank,
-            label: `${className} secondary class ${entry.selector} proficiency`,
-            slug: `${className?.toLowerCase()?.replace(/[^a-z0-9]+/g, "-")}-secondary-${entry.selector}-prof`
-        });
+        const secondaryRank = parseProficiencyRank(entry.rank ?? 1);
+        const primaryRank = getSelectorRank(primaryClassData, entry.selector);
+        const desiredRank = Math.max(primaryRank, secondaryRank);
+        if (desiredRank > primaryRank) {
+            rules.push({
+                key: "GrantProficiency",
+                selector: entry.selector,
+                rank: desiredRank,
+                label: `${className} secondary class ${entry.selector} proficiency`,
+                slug: `${className?.toLowerCase()?.replace(/[^a-z0-9]+/g, "-")}-secondary-${entry.selector}-prof`
+            });
+        }
     });
 
     return rules;
@@ -222,6 +273,25 @@ function buildSecondaryFeatLevels(actorLevel) {
         levels.push(level);
     }
     return levels;
+}
+
+async function runPopulateSecondaryFeats(actor, secondaryClassItem) {
+    if (!actor || !secondaryClassItem) {
+        ui.notifications.warn(`${MODULE_ID}: No actor or secondary class available to populate.`);
+        return;
+    }
+
+    const secondaryClassSlug = getSecondaryClassSlug(secondaryClassItem);
+    const secondaryClassName = getSecondaryClassName(secondaryClassItem);
+    const featLevels = buildSecondaryFeatLevels(actor.level);
+
+    // Use the helper to auto-assign existing class feats into secondary slots
+    const result = await autoAssignSecondaryClassFeats(actor, secondaryClassSlug, secondaryClassName, featLevels);
+    if (result && result.length) {
+        ui.notifications.info(`${MODULE_ID}: Populated ${result.length} secondary-class feats.`);
+    } else {
+        ui.notifications.info(`${MODULE_ID}: No matching class feats found to populate.`);
+    }
 }
 
 function applySecondaryClassModifiers(actor, secondaryClassItem, secondaryClassData) {
@@ -361,7 +431,10 @@ Hooks.on("renderCharacterSheetPF2e", (app, html) => {
             <h3>${secondaryName} Summary</h3>
             <p>Key Ability: ${secondaryKeyAbility ? secondaryKeyAbility.toUpperCase() : "Unknown"}</p>
             <p>Saves: ${secondarySaves.length ? secondarySaves.map((s) => s.charAt(0).toUpperCase() + s.slice(1)).join(", ") : "None"}</p>
-            <p><button class="refresh-secondary-class btn">Refresh Secondary Class</button></p>
+            <p>
+                <button class="refresh-secondary-class btn">Refresh Secondary Class</button>
+                <button class="populate-secondary-feats btn">Populate Secondary Feats</button>
+            </p>
         </div>
     `;
 
@@ -432,4 +505,42 @@ Hooks.on("renderCharacterSheetPF2e", (app, html) => {
             ui.notifications.error(`${MODULE_ID}: Failed to refresh secondary class.`);
         }
     });
+
+    // Manual populate secondary feats control
+    html.find('.populate-secondary-feats').on('click', async (ev) => {
+        try {
+            await runPopulateSecondaryFeats(actor, secondaryClassItem);
+        } catch (err) {
+            console.error(`${MODULE_ID} | Populate error:`, err);
+            ui.notifications.error(`${MODULE_ID}: Failed to populate secondary feats.`);
+        }
+    });
+});
+
+// Auto-assign secondary-class feats on level change when enabled
+Hooks.on("updateActor", async (actor, diff, options, userId) => {
+    try {
+        if (!actor || actor.type !== "character") return;
+        const enabled = game.settings.get(MODULE_ID, "autoAssignSecondaryFeats");
+        if (!enabled) return;
+
+        // Detect level change in diff (support common shapes)
+        const levelChanged = !!(
+            diff?.system?.details?.level?.value !== undefined ||
+            diff?.level !== undefined ||
+            diff?.data?.level !== undefined
+        );
+        if (!levelChanged) return;
+
+        const secondaryClassItem = getSecondaryClassItem(actor);
+        if (!secondaryClassItem) return;
+
+        const secondaryClassSlug = getSecondaryClassSlug(secondaryClassItem);
+        const secondaryClassName = getSecondaryClassName(secondaryClassItem);
+        const featLevels = buildSecondaryFeatLevels(actor.level);
+
+        await autoAssignSecondaryClassFeats(actor, secondaryClassSlug, secondaryClassName, featLevels);
+    } catch (err) {
+        console.error(`${MODULE_ID} | updateActor handler error:`, err);
+    }
 });

@@ -22,3 +22,11 @@ primary class.
 - The module adds a small `Refresh Secondary Class` control in the secondary
 	class summary that re-runs derived-data preparation so rule elements and
 	synthetics are re-applied (useful after manual edits or importing content).
+ - A `Populate Secondary Feats` button is available in the same summary. It
+	 will scan the actor's existing class feats and populate empty secondary
+	 feat slots with matching class feats (convenience for importing or setup).
+
+**Auto-assign on Level Up**
+- A module setting `autoAssignSecondaryFeats` allows automatically assigning
+	secondary-class feats when the actor's level changes. This is off by
+	default; enable it in module settings to auto-populate new slots on level-up.
