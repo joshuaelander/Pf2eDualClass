@@ -1,0 +1,38 @@
+/* Injecting the secondary class name in the header */
+.char-details .class .dual-class {
+    color: var(--text-light);
+    font-weight: normal;
+    font-style: italic;
+}
+
+/* Styling the injected secondary feats section to match the rest of the sheet */
+.secondary-class-feats {
+    margin-top: 15px;
+    border-top: 2px solid var(--primary);
+    padding-top: 10px;
+}
+
+    .secondary-class-feats h3 {
+        font-family: var(--serif);
+        font-size: 1.2rem;
+        color: var(--primary);
+        margin-bottom: 5px;
+    }
+
+    /* Make sure the feat slots look interactive */
+    .secondary-class-feats .feat-slot {
+        border: 1px dashed var(--color-border-dark-4);
+        background: rgba(0, 0, 0, 0.05);
+        border-radius: 3px;
+        margin-bottom: 2px;
+        transition: background 0.2s;
+    }
+
+        .secondary-class-feats .feat-slot:hover {
+            background: rgba(0, 0, 0, 0.1);
+        }
+
+        .secondary-class-feats .feat-slot.drag-hover {
+            border-color: var(--primary);
+            background: rgba(var(--primary-rgb), 0.2);
+        }
